@@ -3,6 +3,8 @@ import {
   closestCorners,
   DndContext,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
@@ -27,9 +29,10 @@ function DealCard({ deal }) {
     transition,
     isDragging,
   } = useSortable({
-    id: deal.id,
+    id: `deal-${deal.id}`,
     data: {
       type: 'deal',
+      dealId: deal.id,
       stageId: deal.stage,
     },
   });
@@ -59,8 +62,8 @@ function DealCard({ deal }) {
 }
 
 function Column({ stage, deals, highlighted }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: stage.id,
+  const { setNodeRef } = useDroppable({
+    id: `stage-${stage.id}`,
     data: {
       type: 'stage',
       stageId: stage.id,
@@ -68,13 +71,12 @@ function Column({ stage, deals, highlighted }) {
   });
 
   const totalValue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
-  const active = highlighted || isOver;
 
   return (
     <div
       ref={setNodeRef}
       className={`flex min-h-[calc(100vh-210px)] w-80 flex-shrink-0 flex-col rounded-lg border p-4 transition-colors ${
-        active ? 'border-pipedrive-blue bg-blue-50 ring-2 ring-pipedrive-blue/30' : 'border-transparent bg-gray-100'
+        highlighted ? 'border-pipedrive-blue bg-blue-50 ring-2 ring-pipedrive-blue/30' : 'border-transparent bg-gray-100'
       }`}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -83,7 +85,7 @@ function Column({ stage, deals, highlighted }) {
           BOB {totalValue.toLocaleString()}
         </span>
       </div>
-      <SortableContext items={deals.map((deal) => deal.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={deals.map((deal) => `deal-${deal.id}`)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-1 flex-col gap-3 rounded-md">
           {deals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
@@ -129,6 +131,26 @@ export default function DealsKanban() {
     })
   );
 
+  const collisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    const columnCollisions = pointerCollisions.filter(({ id }) => String(id).startsWith('stage-'));
+
+    if (columnCollisions.length > 0) {
+      return columnCollisions;
+    }
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+
+    const rectCollisions = rectIntersection(args);
+    const rectColumnCollisions = rectCollisions.filter(({ id }) => String(id).startsWith('stage-'));
+    if (rectColumnCollisions.length > 0) {
+      return rectColumnCollisions;
+    }
+
+    return closestCorners(args);
+  };
+
   const resolveStageId = (over) => {
     if (!over) return null;
     if (over.data?.current?.type === 'deal') {
@@ -137,7 +159,8 @@ export default function DealsKanban() {
     if (over.data?.current?.type === 'stage') {
       return over.data.current.stageId;
     }
-    const parsed = parseInt(over.id, 10);
+    const rawId = String(over.id).replace(/^stage-/, '').replace(/^deal-/, '');
+    const parsed = parseInt(rawId, 10);
     if (!Number.isNaN(parsed)) {
       return parsed;
     }
@@ -153,7 +176,7 @@ export default function DealsKanban() {
     setOverStageId(null);
     if (!over) return;
 
-    const dealId = active.id;
+    const dealId = active.data?.current?.dealId;
     const newStageId = resolveStageId(over);
     if (!newStageId) return;
 
@@ -195,7 +218,7 @@ export default function DealsKanban() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetection}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={() => setOverStageId(null)}
