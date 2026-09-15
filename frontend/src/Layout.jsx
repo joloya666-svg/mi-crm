@@ -1,18 +1,18 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  HandCoins, 
-  UserRound, 
-  CalendarDays, 
-  Package, 
+import {
+  LayoutDashboard,
+  Users,
+  HandCoins,
+  UserRound,
+  CalendarDays,
+  Package,
   BarChart3,
-  Settings,
   CircleUser,
-  Search
+  Search,
 } from 'lucide-react';
+import { useState } from 'react';
+import DealForm from './components/DealForm';
 
-// Los módulos exactos que vimos en tus capturas
 const menuItems = [
   { name: 'Inicio', icon: LayoutDashboard, path: '/' },
   { name: 'Prospectos', icon: Users, path: '/prospects' },
@@ -25,29 +25,29 @@ const menuItems = [
 
 export default function Layout() {
   const location = useLocation();
+  const [dealModalOpen, setDealModalOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* SIDEBAR - Igual al de Pipedrive */}
       <aside className="w-[72px] md:w-[230px] bg-pipedrive-sidebar text-white flex flex-col shrink-0 transition-all duration-300">
-        {/* Logo o título */}
         <div className="h-16 flex items-center justify-center md:justify-start px-4 border-b border-pipedrive-hover">
           <span className="text-xl font-bold hidden md:block">Mi CRM</span>
           <span className="text-xl font-bold md:hidden">M</span>
         </div>
 
-        {/* Menú de navegación */}
         <nav className="flex-1 overflow-y-auto py-4">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path || 
-                            (item.path !== '/' && location.pathname.startsWith(item.path));
+            const isActive =
+              location.pathname === item.path ||
+              (item.path !== '/' && location.pathname.startsWith(item.path));
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-pipedrive-blue text-white' 
+                  isActive
+                    ? 'bg-pipedrive-blue text-white'
                     : 'text-gray-300 hover:bg-pipedrive-hover hover:text-white'
                 }`}
               >
@@ -58,7 +58,6 @@ export default function Layout() {
           })}
         </nav>
 
-        {/* Configuración abajo */}
         <div className="border-t border-pipedrive-hover p-4">
           <div className="flex items-center gap-3 cursor-pointer hover:bg-pipedrive-hover rounded-lg p-2">
             <CircleUser className="w-8 h-8 text-gray-400" />
@@ -70,9 +69,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* HEADER (Barra superior) */}
         <header className="h-16 bg-white border-b border-pipedrive-border flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4 w-full max-w-xl">
             <div className="relative w-full">
@@ -86,17 +83,17 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-3 text-sm text-pipedrive-text">
             <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">814/25,000</span>
-            <button className="bg-pipedrive-blue text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-600 transition">
+            <button onClick={() => setDealModalOpen(true)} className="bg-pipedrive-blue text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-600 transition" type="button">
               + Añadir
             </button>
           </div>
         </header>
 
-        {/* CONTENIDO DINÁMICO (Aquí se renderizan las páginas) */}
         <main className="flex-1 overflow-y-auto bg-pipedrive-gray p-6">
-          <Outlet /> {/* React Router renderiza aquí las vistas */}
+          <Outlet />
         </main>
       </div>
+      <DealForm open={dealModalOpen} onClose={() => setDealModalOpen(false)} />
     </div>
   );
 }

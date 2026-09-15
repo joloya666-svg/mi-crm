@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  DndContext,
   closestCorners,
-  useSensor,
-  useSensors,
+  DndContext,
   PointerSensor,
   useDroppable,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  verticalListSortingStrategy,
   useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getDeals, getStages, changeDealStage } from '../api';
+import { Plus } from 'lucide-react';
+import { changeDealStage, getDeals, getStages } from '../api';
+import DealForm from './DealForm';
+import { Button, PageHeader } from './ui';
 
-// --- Componente de tarjeta (arrastrable) ---
 function DealCard({ deal }) {
   const {
     attributes,
@@ -28,15 +30,14 @@ function DealCard({ deal }) {
     id: deal.id,
     data: {
       type: 'deal',
-      dealId: deal.id,
-      stageId: deal.stage, // importante para saber su etapa actual
+      stageId: deal.stage,
     },
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.55 : 1,
   };
 
   return (
@@ -45,19 +46,19 @@ function DealCard({ deal }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md cursor-grab active:cursor-grabbing"
+      className="rounded-md border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md cursor-grab active:cursor-grabbing"
     >
-      <h4 className="font-semibold text-gray-800 text-sm">{deal.title}</h4>
-      <p className="text-xs text-gray-500 mt-1">{deal.person_name}</p>
-      <p className="text-blue-600 font-bold text-sm mt-2">
-        BOB{Number(deal.value).toLocaleString()}
+      <h4 className="text-sm font-semibold text-gray-800">{deal.title}</h4>
+      <p className="mt-1 text-xs text-gray-500">{deal.person_display_name || deal.person_name || 'Sin contacto'}</p>
+      {deal.organization_name && <p className="mt-1 text-xs text-gray-500">{deal.organization_name}</p>}
+      <p className="mt-2 text-sm font-bold text-pipedrive-blue">
+        BOB {Number(deal.value || 0).toLocaleString()}
       </p>
     </div>
   );
 }
 
-// --- Componente de columna (contenedor que recibe tarjetas) ---
-function Column({ stage, deals }) {
+function Column({ stage, deals, highlighted }) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
     data: {
@@ -66,33 +67,31 @@ function Column({ stage, deals }) {
     },
   });
 
-  const totalValue = deals.reduce((sum, d) => sum + Number(d.value), 0);
+  const totalValue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
+  const active = highlighted || isOver;
 
   return (
     <div
       ref={setNodeRef}
-      className={`bg-gray-100 rounded-xl p-4 w-80 flex-shrink-0 min-h-[400px] transition-colors ${
-        isOver ? 'bg-blue-50 ring-2 ring-blue-400' : ''
+      className={`flex min-h-[calc(100vh-210px)] w-80 flex-shrink-0 flex-col rounded-lg border p-4 transition-colors ${
+        active ? 'border-pipedrive-blue bg-blue-50 ring-2 ring-pipedrive-blue/30' : 'border-transparent bg-gray-100'
       }`}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wide">
-          {stage.name}
-        </h3>
-        <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs font-medium">
-          BOB{totalValue.toLocaleString()}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700">{stage.name}</h3>
+        <span className="rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+          BOB {totalValue.toLocaleString()}
         </span>
       </div>
-      <SortableContext
-        items={deals.map((d) => d.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="space-y-3">
+      <SortableContext items={deals.map((deal) => deal.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-1 flex-col gap-3 rounded-md">
           {deals.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}
           {deals.length === 0 && (
-            <p className="text-gray-400 text-sm text-center py-4">Sin tratos</p>
+            <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-400">
+              Suelta tratos aquí
+            </div>
           )}
         </div>
       </SortableContext>
@@ -100,28 +99,27 @@ function Column({ stage, deals }) {
   );
 }
 
-// --- Componente principal ---
 export default function DealsKanban() {
   const [stages, setStages] = useState([]);
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [overStageId, setOverStageId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Cargar datos
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [stagesRes, dealsRes] = await Promise.all([getStages(), getDeals()]);
+      setStages(stagesRes.data);
+      setDeals(dealsRes.data);
+    } catch (error) {
+      console.error('Error al cargar tratos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('🔍 Cargando datos desde la API...');
-        const [stagesRes, dealsRes] = await Promise.all([getStages(), getDeals()]);
-        console.log('✅ Etapas:', stagesRes.data);
-        console.log('✅ Tratos:', dealsRes.data);
-        setStages(stagesRes.data);
-        setDeals(dealsRes.data);
-      } catch (error) {
-        console.error('❌ Error al cargar datos:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -131,111 +129,52 @@ export default function DealsKanban() {
     })
   );
 
-  // --- MANEJO DEL ARRASTRE ---
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-
-    console.log('🖱️ Evento de arrastre:', { activeId: active.id, overId: over?.id, overData: over?.data });
-
-    if (!over) {
-      console.warn('⚠️ No se soltó sobre ningún contenedor');
-      return;
+  const resolveStageId = (over) => {
+    if (!over) return null;
+    if (over.data?.current?.type === 'deal') {
+      return over.data.current.stageId;
     }
+    if (over.data?.current?.type === 'stage') {
+      return over.data.current.stageId;
+    }
+    const parsed = parseInt(over.id, 10);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+    const matchingStage = stages.find((stage) => stage.name.toLowerCase() === String(over.id).toLowerCase());
+    return matchingStage?.id ?? null;
+  };
+
+  const handleDragOver = ({ over }) => {
+    setOverStageId(resolveStageId(over));
+  };
+
+  const handleDragEnd = async ({ active, over }) => {
+    setOverStageId(null);
+    if (!over) return;
 
     const dealId = active.id;
-    let newStageId = null;
+    const newStageId = resolveStageId(over);
+    if (!newStageId) return;
 
-    // 1. Si el over es una tarjeta (tiene data.type === 'deal'), usamos su stageId
-    if (over.data?.current?.type === 'deal') {
-      newStageId = over.data.current.stageId;
-      console.log('📌 Stage ID desde tarjeta destino:', newStageId);
-    }
-    // 2. Si el over es una columna (tiene data.type === 'stage'), usamos su stageId
-    else if (over.data?.current?.type === 'stage') {
-      newStageId = over.data.current.stageId;
-      console.log('📌 Stage ID desde columna destino:', newStageId);
-    }
-    // 3. Si no tiene data, intentamos parsear el ID directamente
-    else {
-      const parsed = parseInt(over.id);
-      if (!isNaN(parsed)) {
-        newStageId = parsed;
-        console.log('📌 Stage ID parseado desde over.id:', newStageId);
-      }
-    }
-
-    // 4. Fallback: buscar por nombre o ID en la lista de etapas
-    if (newStageId === null || isNaN(newStageId)) {
-      const overIdStr = String(over.id);
-      const matchingStage = stages.find(
-        (s) => s.id.toString() === overIdStr || s.name.toLowerCase() === overIdStr.toLowerCase()
-      );
-      if (matchingStage) {
-        newStageId = matchingStage.id;
-        console.log('📌 Stage ID encontrado por nombre/ID:', newStageId);
-      }
-    }
-
-    // Si no se pudo determinar, error
-    if (newStageId === null || isNaN(newStageId)) {
-      console.error('❌ No se pudo determinar el stage ID:', { overId: over.id, overData: over.data });
-      return;
-    }
-
-    // Verificar que el trato existe
-    const dealToMove = deals.find((d) => d.id === dealId);
-    if (!dealToMove) {
-      console.error('❌ Trato no encontrado:', dealId);
-      return;
-    }
-
-    // Si ya está en esa etapa, no hacer nada
-    if (dealToMove.stage === newStageId) {
-      console.log('ℹ️ El trato ya está en la etapa destino');
-      return;
-    }
-
-    console.log(`🔄 Moviendo trato ${dealId} de "${dealToMove.stage}" a "${newStageId}"`);
+    const dealToMove = deals.find((deal) => deal.id === dealId);
+    if (!dealToMove || dealToMove.stage === newStageId) return;
 
     const previousStageId = dealToMove.stage;
-
-    // --- ACTUALIZAR OPTIMISTAMENTE (frontend) ---
-    setDeals((prevDeals) =>
-      prevDeals.map((deal) =>
-        deal.id === dealId ? { ...deal, stage: newStageId } : deal
-      )
+    setDeals((currentDeals) =>
+      currentDeals.map((deal) => (deal.id === dealId ? { ...deal, stage: newStageId } : deal))
     );
-    console.log('✅ Estado local actualizado');
 
-    // --- PERSISTIR EN EL BACKEND ---
     try {
       await changeDealStage(dealId, newStageId);
-      console.log('✅ Cambio guardado en el backend');
     } catch (error) {
-      console.error('❌ Error al guardar en el backend:', error);
-      // Revertir al estado anterior
-      setDeals((prevDeals) =>
-        prevDeals.map((deal) =>
-          deal.id === dealId ? { ...deal, stage: previousStageId } : deal
-        )
+      console.error('Error al guardar el cambio de etapa:', error);
+      setDeals((currentDeals) =>
+        currentDeals.map((deal) => (deal.id === dealId ? { ...deal, stage: previousStageId } : deal))
       );
-      console.log('🔄 Estado revertido por error');
       alert('Error al mover el trato. Por favor, intenta de nuevo.');
     }
   };
-
-  // --- RENDER ---
-  if (loading) {
-    return <div className="p-6 text-center text-gray-500">Cargando tratos...</div>;
-  }
-
-  if (stages.length === 0) {
-    return (
-      <div className="p-6 text-center text-gray-500">
-        No hay etapas configuradas. Por favor, crea etapas en el admin.
-      </div>
-    );
-  }
 
   const dealsByStage = stages.map((stage) => ({
     ...stage,
@@ -243,12 +182,33 @@ export default function DealsKanban() {
   }));
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 overflow-x-auto p-4 bg-[#f5f6f8] min-h-screen">
-        {dealsByStage.map((stage) => (
-          <Column key={stage.id} stage={stage} deals={stage.deals} />
-        ))}
-      </div>
-    </DndContext>
+    <>
+      <PageHeader
+        title="Tratos"
+        actions={<Button onClick={() => setModalOpen(true)}><Plus className="h-4 w-4" /> Añadir trato</Button>}
+      >
+        Gestiona oportunidades por etapa del embudo.
+      </PageHeader>
+
+      {loading ? (
+        <div className="rounded-lg bg-white p-8 text-center text-gray-500">Cargando tratos...</div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setOverStageId(null)}
+        >
+          <div className="flex gap-5 overflow-x-auto pb-4">
+            {dealsByStage.map((stage) => (
+              <Column key={stage.id} stage={stage} deals={stage.deals} highlighted={overStageId === stage.id} />
+            ))}
+          </div>
+        </DndContext>
+      )}
+
+      <DealForm open={modalOpen} onClose={() => setModalOpen(false)} onSaved={fetchData} />
+    </>
   );
 }

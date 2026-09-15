@@ -1,27 +1,40 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './Layout';
+import ActivitiesPage from './components/ActivitiesPage';
+import ContactsPage from './components/ContactsPage';
+import DashboardPage from './components/DashboardPage';
 import DealsKanban from './components/DealsKanban';
+import LoginPage from './components/LoginPage';
+import ProductsPage from './components/ProductsPage';
+import ProspectsPage from './components/ProspectsPage';
 
-const Home = () => <h1 className="text-2xl font-bold text-[#3b434e]">¡Hola, Alan Buitron!</h1>;
-const Prospects = () => <h1 className="text-2xl font-bold text-[#3b434e]">Buzón de prospectos</h1>;
-const Deals = () => <DealsKanban />;
-const Contacts = () => <h1 className="text-2xl font-bold text-[#3b434e]">Personas / Contactos</h1>;
-const Activities = () => <h1 className="text-2xl font-bold text-[#3b434e]">Calendario / Actividades</h1>;
-const Products = () => <h1 className="text-2xl font-bold text-[#3b434e]">Productos</h1>;
-const Dashboard = () => <h1 className="text-2xl font-bold text-[#3b434e]">Avances / Gráficos</h1>;
+const Home = () => (
+  <div className="rounded-lg border border-pipedrive-border bg-white p-6">
+    <h1 className="text-2xl font-semibold text-pipedrive-text">¡Hola, Alan Buitron!</h1>
+    <p className="mt-2 text-sm text-gray-500">Usa el menú lateral para gestionar prospectos, tratos, contactos y actividades.</p>
+  </div>
+);
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(Boolean(localStorage.getItem('crm_access_token')));
+
+  if (!authenticated) {
+    return <LoginPage onLogin={() => setAuthenticated(true)} />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="prospects" element={<Prospects />} />
-          <Route path="deals" element={<Deals />} />
-          <Route path="contacts" element={<Contacts />} />
-          <Route path="activities" element={<Activities />} />
-          <Route path="products" element={<Products />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="prospects" element={<ProspectsPage />} />
+          <Route path="deals" element={<DealsKanban />} />
+          <Route path="contacts" element={<ContactsPage />} />
+          <Route path="activities" element={<ActivitiesPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
