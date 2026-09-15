@@ -1,8 +1,29 @@
+# Python / Django
 __pycache__/
 *.py[cod]
+*.sqlite3
+db.sqlite3
 .venv/
 backend/.venv/
-frontend/dist/
-node_modules/
+venv/
 .env
 .env.local
+*.log
+
+# Node / React
+node_modules/
+frontend/dist/
+dist/
+build/
+.vite/
+npm-debug.log*
+yarn-error.log*
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.swp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
