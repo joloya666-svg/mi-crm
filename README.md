@@ -7,7 +7,7 @@ CRM interno inspirado en Pipedrive.
 - Backend: Django, Django REST Framework, SQLite, django-cors-headers, SimpleJWT.
 - Frontend: React, Vite, TailwindCSS, React Router, Axios, @dnd-kit, lucide-react, Recharts, react-big-calendar y date-fns.
 
-## Backend
+## Backend local
 
 ```powershell
 cd backend
@@ -27,7 +27,21 @@ Autenticación JWT:
 
 Durante desarrollo CORS está abierto con `CORS_ALLOW_ALL_ORIGINS = True`.
 
-## Frontend
+Variables de entorno disponibles en `backend/.env.example`:
+
+- `SECRET_KEY`
+- `DEBUG`
+- `ALLOWED_HOSTS`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
+- `DATABASE_URL`
+- `SECURE_SSL_REDIRECT`
+- `SESSION_COOKIE_SECURE`
+- `CSRF_COOKIE_SECURE`
+- `SECURE_HSTS_SECONDS`
+- `EMAIL_*`
+
+## Frontend local
 
 ```powershell
 cd frontend
@@ -36,6 +50,58 @@ npm run dev
 ```
 
 La aplicación queda disponible en `http://localhost:5173/`.
+
+Para producción o pruebas contra otro backend, crea `frontend/.env`:
+
+```env
+VITE_API_URL=https://tu-backend.onrender.com/api/
+```
+
+## Despliegue
+
+### Backend en Render
+
+1. Crea una PostgreSQL Database en Render o usa `render.yaml`.
+2. Crea un Web Service apuntando al repo.
+3. Usa `backend` como root directory.
+4. Build command:
+
+```bash
+pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+```
+
+5. Start command:
+
+```bash
+gunicorn backend.wsgi:application
+```
+
+6. Configura variables:
+
+```env
+SECRET_KEY=valor-seguro
+DEBUG=False
+ALLOWED_HOSTS=tu-servicio.onrender.com
+CORS_ALLOWED_ORIGINS=https://tu-frontend.vercel.app
+CSRF_TRUSTED_ORIGINS=https://tu-servicio.onrender.com,https://tu-frontend.vercel.app
+DATABASE_URL=postgresql://...
+```
+
+### Frontend en Vercel
+
+1. Importa el repo en Vercel.
+2. Usa `frontend` como root directory.
+3. Build command: `npm run build`.
+4. Output directory: `dist`.
+5. Configura la variable:
+
+```env
+VITE_API_URL=https://tu-servicio.onrender.com/api/
+```
+
+6. Deploy.
+
+`frontend/vercel.json` incluye la reescritura a `index.html` para que React Router funcione al refrescar rutas internas.
 
 ## Validación
 

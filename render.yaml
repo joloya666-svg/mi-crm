@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: mi-crm-backend
+    env: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn backend.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "mi-crm-backend.onrender.com"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://your-frontend.vercel.app"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://mi-crm-backend.onrender.com,https://your-frontend.vercel.app"
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: SESSION_COOKIE_SECURE
+        value: "True"
+      - key: CSRF_COOKIE_SECURE
+        value: "True"
+      - key: SECURE_HSTS_SECONDS
+        value: "31536000"
+      - key: SECURE_HSTS_PRELOAD
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mi-crm-db
+          property: connectionString
+
+databases:
+  - name: mi-crm-db
+    plan: free

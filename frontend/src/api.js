@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/',
 });
 
 api.interceptors.request.use((config) => {
@@ -24,7 +24,7 @@ api.interceptors.response.use(
 );
 
 export const login = (username, password) =>
-  axios.post('http://localhost:8000/api/token/', { username, password });
+  axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/'}token/`, { username, password });
 
 export const getDeals = (params) => api.get('deals/', { params });
 export const createDeal = (payload) => api.post('deals/', payload);
