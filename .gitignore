@@ -8,12 +8,15 @@ backend/.venv/
 venv/
 .env
 .env.local
+.env.production
+frontend/.env.production
 *.log
 
 # Node / React
 node_modules/
 frontend/dist/
 backend/staticfiles/
+staticfiles/
 dist/
 build/
 .vite/

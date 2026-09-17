@@ -67,7 +67,7 @@ VITE_API_URL=https://tu-backend.onrender.com/api/
 4. Build command:
 
 ```bash
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+./build.sh
 ```
 
 5. Start command:
@@ -123,3 +123,12 @@ npm run build
 - Actividades: calendario con placeholder de sincronización Google/Outlook.
 - Productos: catálogo y CRUD API.
 - Avances: métricas y gráficos desde la API.
+
+## Capturas
+
+Agrega aquí capturas cuando el despliegue esté publicado:
+
+- Login: `docs/screenshots/login.png`
+- Kanban de tratos: `docs/screenshots/deals-kanban.png`
+- Prospectos: `docs/screenshots/prospects.png`
+- Dashboard: `docs/screenshots/dashboard.png`
